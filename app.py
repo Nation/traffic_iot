@@ -1,49 +1,152 @@
-from flask import Flask, render_template, redirect, url_for
-from datetime import datetime, timedelta
+from flask import Flask, render_template, request, jsonify
+from datetime import datetime
+import logging
+import os
 
 app = Flask(__name__)
 
-# Track LED state and last ping time
-current_state = {"state": "-", "time": "-"}
-last_heartbeat = None
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Global state tracking
+current_state = {
+    'light': 'OFF',  # R, Y, G, or OFF
+    'timestamp': datetime.now().isoformat(),
+    'source': 'system'  # 'esp8266' or 'web' or 'system'
+}
+
+# State history (keep last 100 entries)
+state_history = []
+MAX_HISTORY = 100
+
+def add_to_history(state, source):
+    """Add state change to history"""
+    entry = {
+        'light': state,
+        'timestamp': datetime.now().isoformat(),
+        'source': source
+    }
+    state_history.append(entry)
+    
+    # Keep only last MAX_HISTORY entries
+    if len(state_history) > MAX_HISTORY:
+        state_history.pop(0)
+    
+    logger.info(f"State changed to {state} from {source}")
 
 @app.route('/')
 def index():
-    esp_status = check_esp_status()
-    return render_template(
-        "index.html",
-        state=current_state["state"],
-        time=current_state["time"],
-        esp_status=esp_status
-    )
+    """Main dashboard page"""
+    return render_template('index.html', current_state=current_state)
 
-@app.route('/set/<color>')
-def set_color(color):
-    color_map = {"R": "Red", "Y": "Yellow", "G": "Green"}
-    current_state["state"] = color_map.get(color.upper(), "Unknown")
-    current_state["time"] = "-"
-    return redirect(url_for('index'))
+@app.route('/set/<state>')
+def set_light_esp(state):
+    """API endpoint for ESP8266 to set light state"""
+    state = state.upper()
+    
+    if state not in ['R', 'Y', 'G']:
+        logger.warning(f"Invalid state received from ESP8266: {state}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Invalid state: {state}. Use R, Y, or G'
+        }), 400
+    
+    # Update global state
+    current_state['light'] = state
+    current_state['timestamp'] = datetime.now().isoformat()
+    current_state['source'] = 'esp8266'
+    
+    # Add to history
+    add_to_history(state, 'esp8266')
+    
+    logger.info(f"ESP8266 set light to: {state}")
+    
+    return jsonify({
+        'status': 'success',
+        'light': state,
+        'timestamp': current_state['timestamp'],
+        'message': f'Light set to {state}'
+    })
 
-@app.route('/reset')
-def reset():
-    current_state["state"] = "-"
-    current_state["time"] = "-"
-    return redirect(url_for('index'))
+@app.route('/api/set', methods=['POST'])
+def set_light_web():
+    """API endpoint for web interface to set light state"""
+    data = request.get_json()
+    
+    if not data or 'state' not in data:
+        return jsonify({
+            'status': 'error',
+            'message': 'No state provided'
+        }), 400
+    
+    state = data['state'].upper()
+    
+    if state not in ['R', 'Y', 'G', 'OFF']:
+        return jsonify({
+            'status': 'error',
+            'message': f'Invalid state: {state}. Use R, Y, G, or OFF'
+        }), 400
+    
+    # Update global state
+    current_state['light'] = state
+    current_state['timestamp'] = datetime.now().isoformat()
+    current_state['source'] = 'web'
+    
+    # Add to history
+    add_to_history(state, 'web')
+    
+    logger.info(f"Web interface set light to: {state}")
+    
+    return jsonify({
+        'status': 'success',
+        'light': state,
+        'timestamp': current_state['timestamp'],
+        'message': f'Light set to {state}'
+    })
 
-@app.route('/ping')  # still returns pong for basic tests
-def ping():
-    return "pong"
+@app.route('/api/status')
+def get_status():
+    """Get current light status"""
+    return jsonify(current_state)
 
-@app.route('/esp-heartbeat')
-def esp_heartbeat():
-    global last_heartbeat
-    last_heartbeat = datetime.utcnow()
-    return "ok"
+@app.route('/api/history')
+def get_history():
+    """Get state change history"""
+    return jsonify({
+        'history': state_history[-20:],  # Return last 20 entries
+        'total_entries': len(state_history)
+    })
 
-def check_esp_status():
-    if last_heartbeat and (datetime.utcnow() - last_heartbeat) < timedelta(seconds=30):
-        return "Connected"
-    return "Disconnected"
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'current_light': current_state['light']
+    })
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        'status': 'error',
+        'message': 'Endpoint not found'
+    }), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"Internal server error: {error}")
+    return jsonify({
+        'status': 'error',
+        'message': 'Internal server error'
+    }), 500
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    port = int(os.environ.get('PORT', 5000))
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    
+    logger.info(f"Starting Flask server on port {port}")
+    logger.info(f"Debug mode: {debug_mode}")
+    
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
