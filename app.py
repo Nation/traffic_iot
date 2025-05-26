@@ -9,21 +9,20 @@ ESP_IP = 'http://192.168.1.42'  # Example: adjust to match your network
 # Simple state tracking (optional)
 current_state = {"state": "-", "time": "-"}
 
-# Check if ESP8266 is reachable
-def check_esp_status():
+# Check if ESP8266 is reachabledef check_esp_status():
     try:
-        response = requests.get(f"{ESP_IP}/ping", timeout=1)
-        if response.status_code == 200:
+        r = requests.get("https://traffic-iot-test.onrender.com/ping", timeout=1)
+        if r.status_code == 200 and r.text.strip() == "pong":
             return "Connected"
     except:
         pass
     return "Disconnected"
 
-# Home route
-@app.route('/')
+# Home route@app.route('/')
 def index():
     esp_status = check_esp_status()
     return render_template("index.html", state=current_state["state"], time=current_state["time"], esp_status=esp_status)
+
 
 # Control routes
 @app.route('/set/<color>')
