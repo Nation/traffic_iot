@@ -474,10 +474,21 @@
             const lastUpdate = new Date(data.timestamp).toLocaleString();
             document.getElementById('lastUpdate').textContent = lastUpdate;
             
-            if (data.source === 'esp8266') {
-                document.getElementById('esp8266Status').textContent = `Connected - Last signal: ${lastUpdate}`;
+            // Check ESP8266 connection status
+            if (data.esp8266_last_seen) {
+                const lastSeen = new Date(data.esp8266_last_seen);
+                const now = new Date();
+                const timeDiff = (now - lastSeen) / 1000; // seconds
+                
+                if (timeDiff < 10) {
+                    document.getElementById('esp8266Status').textContent = `🟢 Connected - Last seen: ${lastSeen.toLocaleString()}`;
+                } else if (timeDiff < 60) {
+                    document.getElementById('esp8266Status').textContent = `🟡 Recently connected (${Math.round(timeDiff)}s ago)`;
+                } else {
+                    document.getElementById('esp8266Status').textContent = `🔴 Disconnected (${Math.round(timeDiff/60)}m ago)`;
+                }
             } else {
-                document.getElementById('esp8266Status').textContent = 'Waiting for ESP8266 signal...';
+                document.getElementById('esp8266Status').textContent = '⚪ Waiting for first connection...';
             }
 
             document.getElementById('connectionStatus').textContent = 'System Online';
