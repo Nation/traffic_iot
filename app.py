@@ -1,13 +1,11 @@
 from flask import Flask, render_template, redirect, url_for
-import requests
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Track the current LED state
+# Track LED state and last ping time
 current_state = {"state": "-", "time": "-"}
-
-
-# ---- ROUTES ----
+last_heartbeat = None
 
 @app.route('/')
 def index():
@@ -19,7 +17,6 @@ def index():
         esp_status=esp_status
     )
 
-
 @app.route('/set/<color>')
 def set_color(color):
     color_map = {"R": "Red", "Y": "Yellow", "G": "Green"}
@@ -27,32 +24,26 @@ def set_color(color):
     current_state["time"] = "-"
     return redirect(url_for('index'))
 
-
 @app.route('/reset')
 def reset():
     current_state["state"] = "-"
     current_state["time"] = "-"
     return redirect(url_for('index'))
 
-
-@app.route('/ping')
+@app.route('/ping')  # still returns pong for basic tests
 def ping():
     return "pong"
 
-
-# ---- FUNCTION ----
+@app.route('/esp-heartbeat')
+def esp_heartbeat():
+    global last_heartbeat
+    last_heartbeat = datetime.utcnow()
+    return "ok"
 
 def check_esp_status():
-    try:
-        r = requests.get("https://traffic-iot-test.onrender.com/ping", timeout=2)
-        if r.status_code == 200 and r.text.strip() == "pong":
-            return "Connected"
-    except:
-        pass
+    if last_heartbeat and (datetime.utcnow() - last_heartbeat) < timedelta(seconds=30):
+        return "Connected"
     return "Disconnected"
-
-
-# ---- ENTRYPOINT ----
 
 if __name__ == '__main__':
     app.run(debug=False)
