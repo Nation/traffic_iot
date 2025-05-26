@@ -1,1 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ESP8266 Traffic Light</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f4f8;
+            padding: 40px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .status {
+            font-size: 20px;
+            margin: 20px 0;
+        }
+        .buttons {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        a {
+            text-decoration: none;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        .red { background: #e53935; color: white; }
+        .yellow { background: #fdd835; color: black; }
+        .green { background: #43a047; color: white; }
+        .gray { background: #90a4ae; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🚦 ESP8266 Traffic Light Control</h1>
+
+    <div class="status">
+        <p><strong>ESP8266 Status:</strong>
+            {% if esp_status == 'Connected' %}
+                <span style="color: green;">Connected</span>
+            {% else %}
+                <span style="color: red;">Disconnected</span>
+            {% endif %}
+        </p>
+        <p><strong>Current State:</strong> {{ state }}</p>
+        <p><strong>Countdown:</strong> {{ time }} seconds</p>
+    </div>
+
+    <div class="buttons">
+        <a href="/set/R"><button class="red">Red</button></a>
+        <a href="/set/Y"><button class="yellow">Yellow</button></a>
+        <a href="/set/G"><button class="green">Green</button></a>
+        <a href="/reset"><button class="gray">Reset</button></a>
+    </div>
+</body>
+</html>
 
