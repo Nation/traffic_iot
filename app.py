@@ -55,6 +55,11 @@ def reset():
         current_state["time"] = "N/A"
     return redirect(url_for("index"))
 
+# ✅ ADD THIS ROUTE
+@app.route('/ping')
+def ping():
+    return "pong"
+
 # Start the Flask server
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
