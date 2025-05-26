@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 current_state = {
     'light': 'OFF',  # R, Y, G, or OFF
     'timestamp': datetime.now().isoformat(),
-    'source': 'system'  # 'esp8266' or 'web' or 'system'
+    'source': 'system',  # 'esp8266' or 'web' or 'system'
+    'esp8266_last_seen': None  # Track when ESP8266 last connected
 }
 
 # State history (keep last 100 entries)
@@ -56,6 +57,7 @@ def set_light_esp(state):
     current_state['light'] = state
     current_state['timestamp'] = datetime.now().isoformat()
     current_state['source'] = 'esp8266'
+    current_state['esp8266_last_seen'] = datetime.now().isoformat()
     
     # Add to history
     add_to_history(state, 'esp8266')
@@ -66,7 +68,8 @@ def set_light_esp(state):
         'status': 'success',
         'light': state,
         'timestamp': current_state['timestamp'],
-        'message': f'Light set to {state}'
+        'message': f'Light set to {state}',
+        'source': 'esp8266'
     })
 
 @app.route('/api/set', methods=['POST'])
@@ -107,7 +110,12 @@ def set_light_web():
 
 @app.route('/api/status')
 def get_status():
-    """Get current light status"""
+    """Get current light status - ESP8266 polls this for remote commands"""
+    # Update ESP8266 last seen if this is a status check from ESP8266
+    user_agent = request.headers.get('User-Agent', '')
+    if 'ESP8266' in user_agent:
+        current_state['esp8266_last_seen'] = datetime.now().isoformat()
+    
     return jsonify(current_state)
 
 @app.route('/api/history')
