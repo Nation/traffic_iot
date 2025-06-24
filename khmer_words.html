@@ -1,1 +1,763 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khmer Word Segmentation - ការបំបែកពាក្យខ្មែរ</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Inter', 'Khmer OS Siemreap', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2d3748, #4a5568);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .input-section {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            flex: 1;
+            min-width: 300px;
+            padding: 16px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: 'Khmer OS Siemreap', sans-serif;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .btn {
+            padding: 16px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Khmer OS Siemreap', sans-serif;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+            color: white;
+            box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 101, 101, 0.4);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .table-section {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 500px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Khmer OS Siemreap', sans-serif;
+        }
+
+        .data-table th {
+            background: #f7fafc;
+            padding: 16px 20px;
+            text-align: left;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+
+        .data-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .data-table tr.selected {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .status-bar {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            padding: 16px 30px;
+            margin-top: 20px;
+            border-radius: 12px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+        }
+
+        .status-bar.show {
+            display: flex;
+        }
+
+        .status-bar.error {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+            box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .word-count {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 16px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .input-section {
+                padding: 20px;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .input-field {
+                min-width: unset;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                justify-content: center;
+            }
+
+            .table-header {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 12px 15px;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ការបំបែកពាក្យខ្មែរ</h1>
+            <p>Khmer Word Segmentation Tool</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <div class="input-group">
+                    <input type="text" id="sentenceInput" class="input-field" 
+                           placeholder="បញ្ចូលប្រយោគជាភាសាខ្មែរ... / Enter Khmer sentence...">
+                    <button id="segmentBtn" class="btn btn-primary">
+                        <span id="segmentBtnText">បំបែកពាក្យ</span>
+                        <div id="segmentLoading" class="loading" style="display: none;"></div>
+                    </button>
+                </div>
+                
+                <div class="actions">
+                    <button id="addBtn" class="btn btn-secondary">បន្ថែម</button>
+                    <button id="updateBtn" class="btn btn-secondary">កែប្រែ</button>
+                    <button id="deleteBtn" class="btn btn-danger">លុប</button>
+                    
+                    <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" class="file-input" accept=".txt">
+                        <button class="btn btn-secondary">បញ្ចូលពាក្យពីឯកសារ</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="table-header">
+                    <div class="table-title">ពាក្យដែលបានបំបែក</div>
+                    <div class="word-count" id="wordCount">0 ពាក្យ</div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table" id="wordsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">ID</th>
+                                <th style="width: 40%;">ប្រយោគ</th>
+                                <th style="width: 30%;">ពាក្យ</th>
+                                <th style="width: 20%;">កាលបរិច្ឆេទ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wordsTableBody">
+                            <tr>
+                                <td colspan="4" class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                    </svg>
+                                    <h3>មិនទាន់មានទិន្នន័យ</h3>
+                                    <p>បញ្ចូលប្រយោគខ្មែរ ហើយចុចបំបែកពាក្យ</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="status-bar" id="statusBar">
+                <span id="statusText"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Bidirectional Maximal Matching Algorithm
+        function bidirectionalMaximalMatching(text, dictionary) {
+            function forward(text) {
+                const words = [];
+                let i = 0;
+                const maxLen = Math.max(...dictionary.map(word => word.length), 1);
+                
+                while (i < text.length) {
+                    let matched = false;
+                    for (let l = maxLen; l > 0; l--) {
+                        if (i + l <= text.length) {
+                            const segment = text.substring(i, i + l);
+                            if (dictionary.includes(segment)) {
+                                words.push(segment);
+                                i += l;
+                                matched = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!matched) {
+                        words.push(text[i]);
+                        i++;
+                    }
+                }
+                return words;
+            }
+
+            function backward(text) {
+                const words = [];
+                let i = text.length;
+                const maxLen = Math.max(...dictionary.map(word => word.length), 1);
+                
+                while (i > 0) {
+                    let matched = false;
+                    for (let l = maxLen; l > 0; l--) {
+                        if (i - l >= 0) {
+                            const segment = text.substring(i - l, i);
+                            if (dictionary.includes(segment)) {
+                                words.unshift(segment);
+                                i -= l;
+                                matched = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!matched) {
+                        words.unshift(text[i - 1]);
+                        i--;
+                    }
+                }
+                return words;
+            }
+
+            const forwardResult = forward(text);
+            const backwardResult = backward(text);
+            return forwardResult.length <= backwardResult.length ? forwardResult : backwardResult;
+        }
+
+        // Data Management
+        class KhmerSegmentationData {
+            constructor() {
+                this.words = JSON.parse(localStorage.getItem('khmerWords') || '[]');
+                this.dictionary = JSON.parse(localStorage.getItem('khmerDictionary') || '[]');
+                this.initializeDefaultDictionary();
+            }
+
+            initializeDefaultDictionary() {
+                if (this.dictionary.length === 0) {
+                    this.dictionary = [
+                        'ខ្ញុំ', 'អ្នក', 'គេ', 'យើង', 'ពួកគេ', 'នេះ', 'នោះ', 'ហ្នឹង',
+                        'ទៅ', 'មក', 'នៅ', 'ក្នុង', 'លើ', 'ក្រោម', 'មុន', 'ក្រោយ',
+                        'ធ្វើ', 'បាន', 'មាន', 'គ្មាន', 'ល្អ', 'អាក្រក់', 'ថ្មី', 'ចាស់',
+                        'ធំ', 'តូច', 'ខ្ពស់', 'ទាប', 'ស្រស់', 'រឹង', 'ទន់', 'ឆ្ងាញ់',
+                        'និង', 'ឬ', 'ប៉ុន្តែ', 'ដូច្នេះ', 'ដែល', 'ជា', 'នឹង', 'បាន'
+                    ];
+                    this.saveDictionary();
+                }
+            }
+
+            addWord(sentence, word) {
+                const id = Date.now();
+                const newWord = {
+                    id,
+                    sentence,
+                    word,
+                    createdAt: new Date().toISOString()
+                };
+                this.words.unshift(newWord);
+                this.saveWords();
+                return newWord;
+            }
+
+            updateWord(id, newWord) {
+                const index = this.words.findIndex(w => w.id === id);
+                if (index !== -1) {
+                    this.words[index].word = newWord;
+                    this.words[index].updatedAt = new Date().toISOString();
+                    this.saveWords();
+                    return true;
+                }
+                return false;
+            }
+
+            deleteWord(id) {
+                this.words = this.words.filter(w => w.id !== id);
+                this.saveWords();
+            }
+
+            addToDictionary(words) {
+                let added = 0;
+                words.forEach(word => {
+                    if (word.trim() && !this.dictionary.includes(word.trim())) {
+                        this.dictionary.push(word.trim());
+                        added++;
+                    }
+                });
+                this.saveDictionary();
+                return added;
+            }
+
+            saveWords() {
+                localStorage.setItem('khmerWords', JSON.stringify(this.words));
+            }
+
+            saveDictionary() {
+                localStorage.setItem('khmerDictionary', JSON.stringify(this.dictionary));
+            }
+        }
+
+        // App Controller
+        class KhmerSegmentationApp {
+            constructor() {
+                this.data = new KhmerSegmentationData();
+                this.selectedRowId = null;
+                this.initializeEventListeners();
+                this.loadData();
+            }
+
+            initializeEventListeners() {
+                document.getElementById('segmentBtn').addEventListener('click', () => this.segmentSentence());
+                document.getElementById('addBtn').addEventListener('click', () => this.addWord());
+                document.getElementById('updateBtn').addEventListener('click', () => this.updateWord());
+                document.getElementById('deleteBtn').addEventListener('click', () => this.deleteWord());
+                document.getElementById('fileInput').addEventListener('change', (e) => this.importWordsFromFile(e));
+                
+                document.getElementById('sentenceInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.segmentSentence();
+                    }
+                });
+
+                // File input button click handler
+                document.querySelector('.file-input-wrapper .btn').addEventListener('click', () => {
+                    document.getElementById('fileInput').click();
+                });
+            }
+
+            async segmentSentence() {
+                const sentence = document.getElementById('sentenceInput').value.trim();
+                if (!sentence) {
+                    this.showStatus('សូមបញ្ចូលប្រយោគ!', 'error');
+                    return;
+                }
+
+                this.setLoading(true);
+                
+                try {
+                    // Simulate async processing
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    const words = bidirectionalMaximalMatching(sentence, this.data.dictionary);
+                    const filteredWords = words.filter(w => w.trim());
+                    
+                    filteredWords.forEach(word => {
+                        this.data.addWord(sentence, word);
+                    });
+                    
+                    this.loadData();
+                    this.showStatus(`បានបំបែក '${sentence}' ជា ${filteredWords.length} ពាក្យ`);
+                    document.getElementById('sentenceInput').value = '';
+                } catch (error) {
+                    this.showStatus('មានបញ្ហាក្នុងការបំបែកពាក្យ', 'error');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            addWord() {
+                const sentence = document.getElementById('sentenceInput').value.trim();
+                if (!sentence) {
+                    this.showStatus('សូមបញ្ចូលប្រយោគ!', 'error');
+                    return;
+                }
+
+                const words = bidirectionalMaximalMatching(sentence, this.data.dictionary);
+                const filteredWords = words.filter(w => w.trim());
+                
+                filteredWords.forEach(word => {
+                    this.data.addWord(sentence, word);
+                });
+                
+                this.loadData();
+                this.showStatus('បានបន្ថែមពាក្យថ្មី');
+                document.getElementById('sentenceInput').value = '';
+            }
+
+            updateWord() {
+                if (!this.selectedRowId) {
+                    this.showStatus('សូមជ្រើសរើសពាក្យមួយ!', 'error');
+                    return;
+                }
+
+                const newWord = document.getElementById('sentenceInput').value.trim();
+                if (!newWord) {
+                    this.showStatus('សូមបញ្ចូលពាក្យថ្មី!', 'error');
+                    return;
+                }
+
+                if (this.data.updateWord(this.selectedRowId, newWord)) {
+                    this.loadData();
+                    this.showStatus('បានកែប្រែពាក្យ');
+                    document.getElementById('sentenceInput').value = '';
+                    this.selectedRowId = null;
+                } else {
+                    this.showStatus('មិនអាចកែប្រែពាក្យបាន', 'error');
+                }
+            }
+
+            deleteWord() {
+                if (!this.selectedRowId) {
+                    this.showStatus('សូមជ្រើសរើសពាក្យមួយ!', 'error');
+                    return;
+                }
+
+                if (confirm('តើអ្នកពិតជាចង់លុបពាក្យនេះមែនទេ?')) {
+                    this.data.deleteWord(this.selectedRowId);
+                    this.loadData();
+                    this.showStatus('បានលុបពាក្យ');
+                    this.selectedRowId = null;
+                }
+            }
+
+            async importWordsFromFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                try {
+                    const text = await file.text();
+                    const words = text.split('\n').map(line => line.trim()).filter(line => line);
+                    const added = this.data.addToDictionary(words);
+                    
+                    this.showStatus(`បានបញ្ចូលពាក្យចំនួន ${added} ពាក្យ!`);
+                } catch (error) {
+                    this.showStatus('មិនអាចអានឯកសារ', 'error');
+                }
+                
+                event.target.value = '';
+            }
+
+            loadData() {
+                const tbody = document.getElementById('wordsTableBody');
+                const wordCount = document.getElementById('wordCount');
+                
+                if (this.data.words.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <h3>មិនទាន់មានទិន្នន័យ</h3>
+                                <p>បញ្ចូលប្រយោគខ្មែរ ហើយចុចបំបែកពាក្យ</p>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML = this.data.words.map(word => `
+                        <tr class="fade-in" data-id="${word.id}" onclick="app.selectRow(${word.id})">
+                            <td>${word.id}</td>
+                            <td>${word.sentence}</td>
+                            <td><strong>${word.word}</strong></td>
+                            <td>${new Date(word.createdAt).toLocaleDateString('km-KH')}</td>
+                        </tr>
+                    `).join('');
+                }
+                
+                wordCount.textContent = `${this.data.words.length} ពាក្យ`;
+            }
+
+            selectRow(id) {
+                // Remove previous selection
+                document.querySelectorAll('.data-table tr.selected').forEach(row => {
+                    row.classList.remove('selected');
+                });
+                
+                // Add selection to clicked row
+                const row = document.querySelector(`tr[data-id="${id}"]`);
+                if (row) {
+                    row.classList.add('selected');
+                    this.selectedRowId = id;
+                    
+                    // Find the word data and populate input field
+                    const wordData = this.data.words.find(w => w.id === id);
+                    if (wordData) {
+                        document.getElementById('sentenceInput').value = wordData.word;
+                    }
+                }
+            }
+
+            setLoading(isLoading) {
+                const btn = document.getElementById('segmentBtn');
+                const text = document.getElementById('segmentBtnText');
+                const loading = document.getElementById('segmentLoading');
+                
+                if (isLoading) {
+                    text.style.display = 'none';
+                    loading.style.display = 'block';
+                    btn.disabled = true;
+                } else {
+                    text.style.display = 'block';
+                    loading.style.display = 'none';
+                    btn.disabled = false;
+                }
+            }
+
+            showStatus(message, type = 'success') {
+                const statusBar = document.getElementById('statusBar');
+                const statusText = document.getElementById('statusText');
+                
+                statusText.textContent = message;
+                statusBar.className = `status-bar show ${type}`;
+                
+                setTimeout(() => {
+                    statusBar.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Initialize the app
+        const app = new KhmerSegmentationApp();
+    </script>
+</body>
+</html>
